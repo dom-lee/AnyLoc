@@ -15,7 +15,6 @@
     [1]: https://www.robots.ox.ac.uk/~mobile/IJRR_2008_Dataset/
 """
 
-# %%
 import torch
 from torchvision import transforms as tvf
 from torchvision.transforms import functional as T
@@ -36,11 +35,10 @@ from utilities import DinoV2ExtractFeatures
 from utilities import VLAD
 
 
-# %%
 @dataclass
 class LocalArgs:
     # If True, the example dataset will be downloaded
-    use_example: bool = True
+    use_example: bool = False
     """
         If True, the example dataset will be downloaded. If False,
         then the input directory should contain the images (user is
@@ -48,10 +46,12 @@ class LocalArgs:
     """
     # Input directory containing images
     in_dir: str = "./data/CityCenter/Images"
+    in_dir: str = "/home/dongmyeong/Projects/AMRL/CODa_dev/2d_rect/all"
     # Image file extension
     imgs_ext: str = "jpg"
     # Output directory where global descriptors will be stored
     out_dir: str = "./data/CityCenter/GD_Images"
+    out_dir: str = "./data/CODa/GD_Images"
     # Maximum edge length (expected) across all images (GPU OOM)
     max_img_size: int = 1024
     # Use the OneDrive mirror for example
@@ -64,7 +64,6 @@ class LocalArgs:
     num_c: int = 32
 
 
-# %%
 # Download the cache (if doesn't exist)
 def download_cache():
     l = od_down_links["cache"]  # Link
@@ -77,11 +76,14 @@ def download_cache():
 
 
 # Download the testing dataset
-def download_test_data(use_odrive:bool):
+def download_test_data(use_odrive: bool):
     if use_odrive:
         print("Downloading images from OneDrive ...")
         imgs_link = od_down_links["test_imgs_od"]
-        download(imgs_link, "./data/CityCenter/Images.zip", unzip=True, unzip_path="./data/CityCenter")
+        download(imgs_link,
+                 "./data/CityCenter/Images.zip",
+                 unzip=True,
+                 unzip_path="./data/CityCenter")
         print("Download and extraction of images from OneDrive completed")
     else:
         print("Downloading from original source")
@@ -96,11 +98,11 @@ def download_test_data(use_odrive:bool):
     print("Dataset is ready to test")
 
 
-# %%
 def main(largs: LocalArgs):
     # Basic utilities
-    _ex = lambda x: os.path.realpath(os.path.expanduser(x))
-    
+    def _ex(x):
+        return os.path.realpath(os.path.expanduser(x))
+
     # Ensure that cache and data is there
     download_cache()
     if largs.use_example:
@@ -108,7 +110,7 @@ def main(largs: LocalArgs):
         download_test_data(use_odrive=largs.use_od_example)
     else:
         print("Using the custom dataset")
-    
+
     # Program parameters
     save_dir = _ex(largs.out_dir)
     device = torch.device("cuda")
@@ -117,7 +119,7 @@ def main(largs: LocalArgs):
     desc_facet: Literal["query", "key", "value", "token"] = "value"
     num_c: int = largs.num_c
     # Domain for use case (deployment environment)
-    domain: largs.domain
+    domain: Literal["aerial", "indoor", "urban"] = largs.domain
     # Maximum image dimension
     max_img_size: int = largs.max_img_size
     # Ensure inputs are fine
@@ -126,30 +128,31 @@ def main(largs: LocalArgs):
         print(f"Creating directory: {save_dir}")
     else:
         print("Save directory already exists, overwriting possible!")
-    
+
     # Load the DINO extractor model
-    extractor = DinoV2ExtractFeatures("dinov2_vitg14", desc_layer,
-        desc_facet, device=device)
-    base_tf = tvf.Compose([ # Base image transformations
+    extractor = DinoV2ExtractFeatures("dinov2_vitg14",
+                                      desc_layer,
+                                      desc_facet,
+                                      device=device)
+    base_tf = tvf.Compose([  # Base image transformations
         tvf.ToTensor(),
-        tvf.Normalize(mean=[0.485, 0.456, 0.406], 
-                        std=[0.229, 0.224, 0.225])
+        tvf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
-    
+
     # VLAD object (load cache)
     cache_dir = _ex("./cache")
-    ext_specifier = f"dinov2_vitg14/"\
-            f"l{desc_layer}_{desc_facet}_c{num_c}"
-    c_centers_file = os.path.join(cache_dir, "vocabulary", 
-            ext_specifier, domain, "c_centers.pt")
+    ext_specifier = f"dinov2_vitg14/l{desc_layer}_{desc_facet}_c{num_c}"
+    c_centers_file = os.path.join(cache_dir, "vocabulary", ext_specifier,
+                                  domain, "c_centers.pt")
     assert os.path.isfile(c_centers_file), "Vocabulary not cached!"
     c_centers = torch.load(c_centers_file)
     assert c_centers.shape[0] == num_c, "Wrong number of clusters!"
     # Main VLAD object
-    vlad = VLAD(num_c, desc_dim=None, 
-        cache_dir=os.path.dirname(c_centers_file))
+    vlad = VLAD(num_c,
+                desc_dim=None,
+                cache_dir=os.path.dirname(c_centers_file))
     vlad.fit(None)  # Load the vocabulary
-    
+
     # Global descriptor generation
     imgs_dir = _ex(largs.in_dir)
     assert os.path.isdir(imgs_dir), "Input directory doesn't exist!"
@@ -172,28 +175,23 @@ def main(largs: LocalArgs):
                     h = int(h * max_img_size / w)
                     w = max_img_size
                 print(f"To {(h, w) =}")
-                img_pt = T.resize(img_pt, (h, w), 
-                        interpolation=T.InterpolationMode.BICUBIC)
+                img_pt = T.resize(img_pt, (h, w),
+                                  interpolation=T.InterpolationMode.BICUBIC)
                 print(f"Resized {img_fname} to {img_pt.shape = }")
             # Make image patchable (14, 14 patches)
             c, h, w = img_pt.shape
             h_new, w_new = (h // 14) * 14, (w // 14) * 14
             img_pt = tvf.CenterCrop((h_new, w_new))(img_pt)[None, ...]
             # Extract descriptor
-            ret = extractor(img_pt) # [1, num_patches, desc_dim]
+            ret = extractor(img_pt)  # [1, num_patches, desc_dim]
         # VLAD global descriptor
-        gd = vlad.generate(ret.cpu().squeeze()) # VLAD:  [agg_dim]
-        gd_np = gd.numpy()[np.newaxis, ...] # shape: [1, agg_dim]
-        np.save(f"{save_dir}/{os.path.basename(img_fname)}.npy",
-                gd_np)
+        gd = vlad.generate(ret.cpu().squeeze())  # VLAD:  [agg_dim]
+        gd_np = gd.numpy()[np.newaxis, ...]  # shape: [1, agg_dim]
+        np.save(f"{save_dir}/{os.path.basename(img_fname)}.npy", gd_np)
 
 
-# %%
 if __name__ == "__main__" and "ipykernel" not in sys.argv[0]:
     args = tyro.cli(LocalArgs, description=__doc__)
     main(args)
     print("Exiting program")
     exit(0)
-
-
-# %%

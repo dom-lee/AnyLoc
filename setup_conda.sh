@@ -6,7 +6,7 @@ readonly PROGPATH=$(realpath $(dirname $0))
 
 # Internal variables
 env_name="anyloc"   # Name of the environment
-exec_name="conda"           # Executable
+exec_name="conda"   # Executable
 dry_run="false"     # 'true' or 'false'
 ask_prompts="true"  # 'true' or 'false'
 dev_tools="false"   # 'true' or 'false'
