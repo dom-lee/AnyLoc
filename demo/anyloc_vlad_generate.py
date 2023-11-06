@@ -45,13 +45,13 @@ class LocalArgs:
         expected to arrange it).
     """
     # Input directory containing images
-    in_dir: str = "./data/CityCenter/Images"
-    in_dir: str = "/home/dongmyeong/Projects/AMRL/CODa_dev/2d_rect/all"
+    # in_dir: str = "./data/CityCenter/Images"
+    in_dir: str = "/home/dongmyeong/Projects/AMRL/CAO-SLAM/datasets/CODa/images"
     # Image file extension
     imgs_ext: str = "jpg"
     # Output directory where global descriptors will be stored
-    out_dir: str = "./data/CityCenter/GD_Images"
-    out_dir: str = "./data/CODa/GD_Images"
+    # out_dir: str = "./data/CityCenter/GD_Images"
+    out_dir: str = "/home/dongmyeong/Projects/AMRL/CAO-SLAM/datasets/CODa/global_descriptors"
     # Maximum edge length (expected) across all images (GPU OOM)
     max_img_size: int = 1024
     # Use the OneDrive mirror for example

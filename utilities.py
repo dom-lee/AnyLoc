@@ -20,27 +20,29 @@ from typing import Union, List, Tuple, Literal
 
 import matplotlib.pyplot as plt
 
+
 # %% ---------------- Dataset Utilities ----------------
 # Abstract class (parent) for all custom datasets
 class CustomDataset:
+
     def __init__(self) -> None:
         # Required properties
-        self.database_num = None    # Number of database items
-        self.queries_num = None     # Number of queries
-        self.soft_positives_per_query = None    # Soft pos per qu
-    
+        self.database_num = None  # Number of database items
+        self.queries_num = None  # Number of queries
+        self.soft_positives_per_query = None  # Soft pos per qu
+
     def get_image_paths(self):
         if hasattr(self, 'images_paths'):
             return self.images_paths
         else:
             raise NotImplementedError("Not handled!")
-    
+
     def get_positives(self):
         if hasattr(self, 'soft_positives_per_query'):
             return self.soft_positives_per_query
         else:
             raise NotImplementedError("Not handled!")
-    
+
     def get_image_relpaths(self, i: Union[int, List[int]]) \
             -> Union[List[str], str]:
         """
@@ -63,10 +65,10 @@ class CustomDataset:
         if type(i) == int:
             return rel_paths[0]
         return rel_paths
-    
+
     def __getitem__(self, index):
         raise NotImplementedError("Not created!")
-    
+
     def __len__(self):
         if hasattr(self, 'images_paths'):
             return len(self.get_image_paths())
@@ -113,17 +115,17 @@ def to_pil_list(x) -> List[Image.Image]:
     """
     if type(x) == Image.Image or \
             (type(x) == list and type(x[0]) == Image.Image):
-        return x    # Passthrough
+        return x  # Passthrough
     else:
         x = to_np(x)
     if len(x.shape) == 3:
         x = x[np.newaxis, ...]  # Now len(x.shape) is 4
     imgs_pil = []
     for x_img in x:
-        if x_img.shape[0] in [1, 3]:    # [C, H, W] format
-            x_img = x_img.transpose(1, 2, 0)    # Now [H, W, C]
+        if x_img.shape[0] in [1, 3]:  # [C, H, W] format
+            x_img = x_img.transpose(1, 2, 0)  # Now [H, W, C]
         # Normalize image
-        x_norm = (x_img - x_img.min())/(x_img.max() - x_img.min())
+        x_norm = (x_img - x_img.min()) / (x_img.max() - x_img.min())
         x_pil = Image.fromarray((x_norm * 255).astype(np.uint8))
         imgs_pil.append(x_pil)
     return imgs_pil
@@ -131,13 +133,20 @@ def to_pil_list(x) -> List[Image.Image]:
 
 # %%
 _VIT_FACETS = Literal["query", "key", "value", "token"]
+
+
 class CosPlaceViTExtractFeatures:
     """
         Extract features from an intermediate layer in CosPlace.
     """
-    def __init__(self, ckpt_path: str, layer: int, facet: _VIT_FACETS,
-                use_cls: bool=False, norm_descs: bool=True,
-                device="cpu") -> None:
+
+    def __init__(self,
+                 ckpt_path: str,
+                 layer: int,
+                 facet: _VIT_FACETS,
+                 use_cls: bool = False,
+                 norm_descs: bool = True,
+                 device="cpu") -> None:
         """
             Parameters:
             - ckpt_path: str    Checkpoint path
@@ -181,15 +190,17 @@ class CosPlaceViTExtractFeatures:
             raise ValueError(f"Invalid facet: {self.facet}")
         # Hook data
         self._hook_out = None
-    
+
     def _generate_forward_hook(self, facet: _VIT_FACETS):
+
         def _forward_hook(module, inputs, output):
-            if facet == "token":   # It's a tuple of len = 1
+            if facet == "token":  # It's a tuple of len = 1
                 self._hook_out = output[0]
             else:
                 self._hook_out = output
+
         return _forward_hook
-    
+
     def __call__(self, img: torch.Tensor) -> torch.Tensor:
         """
             Parameters:
@@ -206,7 +217,7 @@ class CosPlaceViTExtractFeatures:
         if self.norm_descs:
             res = F.normalize(res, dim=-1)
         return res
-    
+
     def __del__(self):
         self.hook_handle.remove()
 
@@ -216,13 +227,20 @@ class CosPlaceViTExtractFeatures:
 _DINO_V2_MODELS = Literal["dinov2_vits14", "dinov2_vitb14", \
                         "dinov2_vitl14", "dinov2_vitg14"]
 _DINO_FACETS = Literal["query", "key", "value", "token"]
+
+
 class DinoV2ExtractFeatures:
     """
         Extract features from an intermediate layer in Dino-v2
     """
-    def __init__(self, dino_model: _DINO_V2_MODELS, layer: int, 
-                facet: _DINO_FACETS="token", use_cls=False, 
-                norm_descs=True, device: str = "cpu") -> None:
+
+    def __init__(self,
+                 dino_model: _DINO_V2_MODELS,
+                 layer: int,
+                 facet: _DINO_FACETS = "token",
+                 use_cls=False,
+                 norm_descs=True,
+                 device: str = "cpu") -> None:
         """
             Parameters:
             - dino_model:   The DINO-v2 model to use
@@ -236,8 +254,8 @@ class DinoV2ExtractFeatures:
             - device:   PyTorch device to use
         """
         self.vit_type: str = dino_model
-        self.dino_model: nn.Module = torch.hub.load(
-                'facebookresearch/dinov2', dino_model)
+        self.dino_model: nn.Module = torch.hub.load('facebookresearch/dinov2',
+                                                    dino_model)
         self.device = torch.device(device)
         self.dino_model = self.dino_model.eval().to(self.device)
         self.layer: int = layer
@@ -254,12 +272,14 @@ class DinoV2ExtractFeatures:
         self.norm_descs = norm_descs
         # Hook data
         self._hook_out = None
-    
+
     def _generate_forward_hook(self):
+
         def _forward_hook(module, inputs, output):
             self._hook_out = output
+
         return _forward_hook
-    
+
     def __call__(self, img: torch.Tensor) -> torch.Tensor:
         """
             Parameters:
@@ -276,14 +296,14 @@ class DinoV2ExtractFeatures:
                 if self.facet == "query":
                     res = res[:, :, :d_len]
                 elif self.facet == "key":
-                    res = res[:, :, d_len:2*d_len]
+                    res = res[:, :, d_len:2 * d_len]
                 else:
-                    res = res[:, :, 2*d_len:]
+                    res = res[:, :, 2 * d_len:]
         if self.norm_descs:
             res = F.normalize(res, dim=-1)
-        self._hook_out = None   # Reset the hook
+        self._hook_out = None  # Reset the hook
         return res
-    
+
     def __del__(self):
         self.fh_handle.remove()
 
@@ -320,7 +340,8 @@ def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False):
     grid = grid.reshape([2, 1, grid_size, grid_size])
     pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
     if cls_token:
-        pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed], axis=0)
+        pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed],
+                                   axis=0)
     return pos_embed
 
 
@@ -328,10 +349,12 @@ def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     assert embed_dim % 2 == 0
 
     # use half of dimensions to encode grid_h
-    emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[0])  # (H*W, D/2)
-    emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[1])  # (H*W, D/2)
+    emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2,
+                                              grid[0])  # (H*W, D/2)
+    emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2,
+                                              grid[1])  # (H*W, D/2)
 
-    emb = np.concatenate([emb_h, emb_w], axis=1) # (H*W, D)
+    emb = np.concatenate([emb_h, emb_w], axis=1)  # (H*W, D)
     return emb
 
 
@@ -349,8 +372,8 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     pos = pos.reshape(-1)  # (M,)
     out = np.einsum('m,d->md', pos, omega)  # (M, D/2), outer product
 
-    emb_sin = np.sin(out) # (M, D/2)
-    emb_cos = np.cos(out) # (M, D/2)
+    emb_sin = np.sin(out)  # (M, D/2)
+    emb_cos = np.cos(out)  # (M, D/2)
 
     emb = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
     return emb
@@ -368,30 +391,42 @@ def interpolate_pos_embed(model, checkpoint_model):
         num_patches = model.patch_embed.num_patches
         num_extra_tokens = model.pos_embed.shape[-2] - num_patches
         # height (== width) for the checkpoint position embedding
-        orig_size = int((pos_embed_checkpoint.shape[-2] - num_extra_tokens) ** 0.5)
+        orig_size = int(
+            (pos_embed_checkpoint.shape[-2] - num_extra_tokens)**0.5)
         # height (== width) for the new position embedding
-        new_size = int(num_patches ** 0.5)
+        new_size = int(num_patches**0.5)
         # class_token and dist_token are kept unchanged
         if orig_size != new_size:
-            print("Position interpolate from %dx%d to %dx%d" % (orig_size, orig_size, new_size, new_size))
+            print("Position interpolate from %dx%d to %dx%d" %
+                  (orig_size, orig_size, new_size, new_size))
             extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
             # only the position tokens are interpolated
             pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
-            pos_tokens = pos_tokens.reshape(-1, orig_size, orig_size, embedding_size).permute(0, 3, 1, 2)
-            pos_tokens = torch.nn.functional.interpolate(
-                pos_tokens, size=(new_size, new_size), mode='bicubic', align_corners=False)
+            pos_tokens = pos_tokens.reshape(-1, orig_size, orig_size,
+                                            embedding_size).permute(
+                                                0, 3, 1, 2)
+            pos_tokens = torch.nn.functional.interpolate(pos_tokens,
+                                                         size=(new_size,
+                                                               new_size),
+                                                         mode='bicubic',
+                                                         align_corners=False)
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['pos_embed'] = new_pos_embed
 
 
-
 # %% -------------------- Recall Calculations --------------------
-def get_top_k_recall(top_k: List[int], db: torch.Tensor, 
-        qu: torch.Tensor, gt_pos: np.ndarray, method: str="cosine", 
-        norm_descs: bool=True, use_gpu: bool=False, 
-        use_percentage: bool=True, sub_sample_db: int=1, 
-        sub_sample_qu: int=1) -> Tuple[np.ndarray, np.ndarray, dict]:
+def get_top_k_recall(
+        top_k: List[int],
+        db: torch.Tensor,
+        qu: torch.Tensor,
+        gt_pos: np.ndarray,
+        method: str = "cosine",
+        norm_descs: bool = True,
+        use_gpu: bool = False,
+        use_percentage: bool = True,
+        sub_sample_db: int = 1,
+        sub_sample_qu: int = 1) -> Tuple[np.ndarray, np.ndarray, dict]:
     """
         Given a database and query (or queries), get the top 'k'
         retrievals (closest in database for each query) as indices (in
@@ -444,11 +479,11 @@ def get_top_k_recall(top_k: List[int], db: torch.Tensor,
         raise NotImplementedError(f"Method: {method}")
     if use_gpu:
         res = faiss.StandardGpuResources()
-        index = faiss.index_cpu_to_gpu(res, 0 , index)
+        index = faiss.index_cpu_to_gpu(res, 0, index)
     # Get the max(top-k) retrieval, then traverse list
     index.add(db)
     distances, indices = index.search(qu, max(top_k))
-    recalls = dict(zip(top_k, [0]*len(top_k)))
+    recalls = dict(zip(top_k, [0] * len(top_k)))
     # print(qu.shape,indices.shape)
     for i_qu, qu_retr in enumerate(indices):
         for i_rec in top_k:
@@ -460,8 +495,7 @@ def get_top_k_recall(top_k: List[int], db: torch.Tensor,
                     Sub-sampled database (step in retrievals)
             """
             correct_retr = gt_pos[i_qu * sub_sample_qu]
-            if np.any(np.isin(qu_retr[:i_rec] * sub_sample_db, 
-                        correct_retr)):
+            if np.any(np.isin(qu_retr[:i_rec] * sub_sample_db, correct_retr)):
                 recalls[i_rec] += 1
     if use_percentage:
         for k in recalls:
@@ -491,11 +525,12 @@ def pad_img(img: np.ndarray, padding:int, color:tuple=(0, 0, 0)) \
         color = tuple(color)
     assert len(color) == 3, "Color should be (R, G, B) value"
     color = np.array(color)
-    # ret_img = np.pad(img, [(padding, padding), (padding, padding), 
-    #             (0, 0)], constant_values=[(color, color), 
+    # ret_img = np.pad(img, [(padding, padding), (padding, padding),
+    #             (0, 0)], constant_values=[(color, color),
     #                         (color, color), (0, 0)])
-    ret_img = np.ones((img.shape[0] + 2*padding, 
-                img.shape[1] + 2*padding, 3), np.uint8) * color
+    ret_img = np.ones(
+        (img.shape[0] + 2 * padding, img.shape[1] + 2 * padding, 3),
+        np.uint8) * color
     ret_img[padding:-padding, padding:-padding] = img
     return ret_img.astype(img.dtype)
 
@@ -518,8 +553,9 @@ def seed_everything(seed=42):
     torch.backends.cudnn.benchmark = False
     print(f"Seed set to: {seed} (type: {type(seed)})")
 
+
 # PCA dimensionality reduction
-def reduce_pca(train_descs: np.ndarray, test_descs: np.ndarray, 
+def reduce_pca(train_descs: np.ndarray, test_descs: np.ndarray,
             lower_dim:int, low_factor:float=0.0, fallback:int=256,
             svd_solver:str='full', whitening:bool=False) \
                 -> Tuple[np.ndarray, np.ndarray]:
@@ -558,7 +594,7 @@ def reduce_pca(train_descs: np.ndarray, test_descs: np.ndarray,
     assert 0 <= low_factor <= 1
     out_train_descs: np.ndarray = None
     out_test_descs: np.ndarray = None
-    if low_factor == 0.0:   # Direct downsample
+    if low_factor == 0.0:  # Direct downsample
         pca = PCA(lower_dim, svd_solver=svd_solver, whiten=whitening)
         out_train_descs = pca.fit_transform(train_descs)
         out_test_descs = pca.transform(test_descs)
@@ -579,8 +615,8 @@ def reduce_pca(train_descs: np.ndarray, test_descs: np.ndarray,
         n_samples, n_components = train_descs.shape
         pca = PCA(n_components, svd_solver=svd_solver)
         pca.fit(train_descs)
-        tf_pca = np.concatenate((pca.components_[:_up],
-                    pca.components_[-_down:]))
+        tf_pca = np.concatenate(
+            (pca.components_[:_up], pca.components_[-_down:]))
         out_train_descs = (train_descs - pca.mean_) @ tf_pca.T
         out_test_descs = (test_descs - pca.mean_) @ tf_pca.T
     return out_train_descs, out_test_descs
@@ -654,12 +690,16 @@ class VLAD:
             Proceedings of the IEEE conference on Computer Vision and 
             Pattern Recognition. 2013.
     """
-    def __init__(self, num_clusters: int, 
-                desc_dim: Union[int, None]=None, 
-                intra_norm: bool=True, norm_descs: bool=True, 
-                dist_mode: str="cosine", vlad_mode: str="hard", 
-                soft_temp: float=1.0, 
-                cache_dir: Union[str,None]=None) -> None:
+
+    def __init__(self,
+                 num_clusters: int,
+                 desc_dim: Union[int, None] = None,
+                 intra_norm: bool = True,
+                 norm_descs: bool = True,
+                 dist_mode: str = "cosine",
+                 vlad_mode: str = "hard",
+                 soft_temp: float = 1.0,
+                 cache_dir: Union[str, None] = None) -> None:
         self.num_clusters = num_clusters
         self.desc_dim = desc_dim
         self.intra_norm = intra_norm
@@ -675,7 +715,7 @@ class VLAD:
         self.cache_dir = cache_dir
         if self.cache_dir is not None:
             self.cache_dir = os.path.abspath(os.path.expanduser(
-                    self.cache_dir))
+                self.cache_dir))
             if not os.path.exists(self.cache_dir):
                 os.makedirs(self.cache_dir)
                 print(f"Created cache directory: {self.cache_dir}")
@@ -684,7 +724,7 @@ class VLAD:
                         f"{self.cache_dir}")
         else:
             print("VLAD caching is disabled.")
-    
+
     def can_use_cache_vlad(self):
         """
             Checks if the cache directory is a valid cache directory.
@@ -706,10 +746,10 @@ class VLAD:
             return True
         else:
             return False
-    
-    def can_use_cache_ids(self, 
-                cache_ids: Union[List[str], str, None],
-                only_residuals: bool=False) -> bool:
+
+    def can_use_cache_ids(self,
+                          cache_ids: Union[List[str], str, None],
+                          only_residuals: bool = False) -> bool:
         """
             Checks if the given cache IDs exist in the cache directory
             and returns True if all of them exist.
@@ -732,8 +772,7 @@ class VLAD:
         if isinstance(cache_ids, str):
             cache_ids = [cache_ids]
         for cache_id in cache_ids:
-            if not os.path.exists(
-                    f"{self.cache_dir}/{cache_id}_r.pt"):
+            if not os.path.exists(f"{self.cache_dir}/{cache_id}_r.pt"):
                 return False
             if self.vlad_mode == "hard" and not os.path.exists(
                     f"{self.cache_dir}/{cache_id}_l.pt") and not \
@@ -744,7 +783,7 @@ class VLAD:
                         only_residuals:
                 return False
         return True
-    
+
     # Generate cluster centers
     def fit(self, train_descs: Union[np.ndarray, torch.Tensor, None]):
         """
@@ -767,8 +806,7 @@ class VLAD:
         # Check if cache exists
         if self.can_use_cache_vlad():
             print("Using cached cluster centers")
-            self.c_centers = torch.load(
-                    f"{self.cache_dir}/c_centers.pt")
+            self.c_centers = torch.load(f"{self.cache_dir}/c_centers.pt")
             self.kmeans.centroids = self.c_centers
             if self.desc_dim is None:
                 self.desc_dim = self.c_centers.shape[1]
@@ -787,10 +825,9 @@ class VLAD:
             self.c_centers = self.kmeans.centroids
             if self.cache_dir is not None:
                 print("Caching cluster centers")
-                torch.save(self.c_centers, 
-                        f"{self.cache_dir}/c_centers.pt")
-    
-    def fit_and_generate(self, 
+                torch.save(self.c_centers, f"{self.cache_dir}/c_centers.pt")
+
+    def fit_and_generate(self,
                 train_descs: Union[np.ndarray, torch.Tensor]) \
                 -> torch.Tensor:
         """
@@ -815,9 +852,10 @@ class VLAD:
         self.fit(all_descs)
         # For each image, stack VLAD
         return torch.stack([self.generate(tr) for tr in train_descs])
-    
-    def generate(self, query_descs: Union[np.ndarray, torch.Tensor],
-                cache_id: Union[str, None]=None) -> torch.Tensor:
+
+    def generate(self,
+                 query_descs: Union[np.ndarray, torch.Tensor],
+                 cache_id: Union[str, None] = None) -> torch.Tensor:
         """
             Given the query descriptors, generate a VLAD vector. Call
             `fit` before using this method. Use this for only single
@@ -843,53 +881,49 @@ class VLAD:
             if cache_id is not None and self.can_use_cache_vlad() \
                     and os.path.isfile(
                         f"{self.cache_dir}/{cache_id}_l.pt"):
-                labels = torch.load(
-                        f"{self.cache_dir}/{cache_id}_l.pt")
+                labels = torch.load(f"{self.cache_dir}/{cache_id}_l.pt")
             else:
-                labels = self.kmeans.predict(query_descs)   # [q]
+                labels = self.kmeans.predict(query_descs)  # [q]
                 if cache_id is not None and self.can_use_cache_vlad():
-                    torch.save(labels, 
-                            f"{self.cache_dir}/{cache_id}_l.pt")
+                    torch.save(labels, f"{self.cache_dir}/{cache_id}_l.pt")
             # Create VLAD from residuals and labels
             used_clusters = set(labels.numpy())
             for k in used_clusters:
                 # Sum of residuals for the descriptors in the cluster
                 #  Shape:[q, c, d]  ->  [q', d] -> [d]
-                cd_sum = residuals[labels==k,k].sum(dim=0)
+                cd_sum = residuals[labels == k, k].sum(dim=0)
                 if self.intra_norm:
                     cd_sum = F.normalize(cd_sum, dim=0)
-                un_vlad[k*self.desc_dim:(k+1)*self.desc_dim] = cd_sum
-        else:       # Soft cluster assignment
+                un_vlad[k * self.desc_dim:(k + 1) * self.desc_dim] = cd_sum
+        else:  # Soft cluster assignment
             # Cosine similarity: 1 = close, -1 = away
             if cache_id is not None and self.can_use_cache_vlad() \
                     and os.path.isfile(
                         f"{self.cache_dir}/{cache_id}_s.pt"):
-                soft_assign = torch.load(
-                        f"{self.cache_dir}/{cache_id}_s.pt")
+                soft_assign = torch.load(f"{self.cache_dir}/{cache_id}_s.pt")
             else:
-                cos_sims = F.cosine_similarity( # [q, c]
-                        ein.rearrange(query_descs, "q d -> q 1 d"), 
-                        ein.rearrange(self.c_centers, "c d -> 1 c d"), 
-                        dim=2)
-                soft_assign = F.softmax(self.soft_temp*cos_sims, 
-                        dim=1)
+                cos_sims = F.cosine_similarity(  # [q, c]
+                    ein.rearrange(query_descs, "q d -> q 1 d"),
+                    ein.rearrange(self.c_centers, "c d -> 1 c d"),
+                    dim=2)
+                soft_assign = F.softmax(self.soft_temp * cos_sims, dim=1)
                 if cache_id is not None and self.can_use_cache_vlad():
-                    torch.save(soft_assign, 
-                            f"{self.cache_dir}/{cache_id}_s.pt")
+                    torch.save(soft_assign,
+                               f"{self.cache_dir}/{cache_id}_s.pt")
             # Soft assignment scores (as probabilities): [q, c]
             for k in range(0, self.num_clusters):
                 w = ein.rearrange(soft_assign[:, k], "q -> q 1 1")
                 # Sum of residuals for all descriptors (for cluster k)
-                cd_sum = ein.rearrange(w * residuals, 
-                            "q c d -> (q c) d").sum(dim=0)  # [d]
+                cd_sum = ein.rearrange(w * residuals,
+                                       "q c d -> (q c) d").sum(dim=0)  # [d]
                 if self.intra_norm:
                     cd_sum = F.normalize(cd_sum, dim=0)
-                un_vlad[k*self.desc_dim:(k+1)*self.desc_dim] = cd_sum
+                un_vlad[k * self.desc_dim:(k + 1) * self.desc_dim] = cd_sum
         # Normalize the VLAD vector
         n_vlad = F.normalize(un_vlad, dim=0)
         return n_vlad
-    
-    def generate_multi(self, 
+
+    def generate_multi(self,
             multi_query: Union[np.ndarray, torch.Tensor, list],
             cache_ids: Union[List[str], None]=None) \
             -> Union[torch.Tensor, list]:
@@ -916,18 +950,18 @@ class VLAD:
             cache_ids = [None] * len(multi_query)
         res = [self.generate(q, c) \
                 for (q, c) in zip(multi_query, cache_ids)]
-        try:    # Most likely pytorch
+        try:  # Most likely pytorch
             res = torch.stack(res)
         except TypeError:
-            try:    # Otherwise numpy
+            try:  # Otherwise numpy
                 res = np.stack(res)
             except TypeError:
-                pass    # Let it remain as a list
+                pass  # Let it remain as a list
         return res
-    
-    def generate_res_vec(self, 
-                query_descs: Union[np.ndarray, torch.Tensor],
-                cache_id: Union[str, None]=None) -> torch.Tensor:
+
+    def generate_res_vec(self,
+                         query_descs: Union[np.ndarray, torch.Tensor],
+                         cache_id: Union[str, None] = None) -> torch.Tensor:
         """
             Given the query descriptors, generate a VLAD vector. Call
             `fit` before using this method. Use this for only single
@@ -950,8 +984,7 @@ class VLAD:
         # Compute residuals (all query to cluster): [q, c, d]
         if cache_id is not None and self.can_use_cache_vlad() and \
                 os.path.isfile(f"{self.cache_dir}/{cache_id}_r.pt"):
-            residuals = torch.load(
-                    f"{self.cache_dir}/{cache_id}_r.pt")
+            residuals = torch.load(f"{self.cache_dir}/{cache_id}_r.pt")
         else:
             if type(query_descs) == np.ndarray:
                 query_descs = torch.from_numpy(query_descs)\
@@ -966,12 +999,11 @@ class VLAD:
                 if not os.path.isdir(cid_dir):
                     os.makedirs(cid_dir)
                     print(f"Created directory: {cid_dir}")
-                torch.save(residuals, 
-                        f"{self.cache_dir}/{cache_id}_r.pt")
+                torch.save(residuals, f"{self.cache_dir}/{cache_id}_r.pt")
         # print("residuals",residuals.shape)
         return residuals
 
-    def generate_multi_res_vec(self, 
+    def generate_multi_res_vec(self,
             multi_query: Union[np.ndarray, torch.Tensor, list],
             cache_ids: Union[List[str], None]=None) \
             -> Union[torch.Tensor, list]:
@@ -998,14 +1030,15 @@ class VLAD:
             cache_ids = [None] * len(multi_query)
         res = [self.generate_res_vec(q, c) \
                 for (q, c) in zip(multi_query, cache_ids)]
-        try:    # Most likely pytorch
+        try:  # Most likely pytorch
             res = torch.stack(res)
         except TypeError:
-            try:    # Otherwise numpy
+            try:  # Otherwise numpy
                 res = np.stack(res)
             except TypeError:
-                pass    # Let it remain as a list
+                pass  # Let it remain as a list
         return res
+
 
 # %%
 seed_everything()

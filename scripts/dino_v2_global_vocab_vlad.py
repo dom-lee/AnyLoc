@@ -82,7 +82,6 @@ if lib_path not in sys.path:
 else:
     print(f'Library path {lib_path} already in PYTHONPATH')
 
-
 # %%
 import numpy as np
 import torch
@@ -120,8 +119,8 @@ from custom_datasets.vpair_distractor_dataloader import VPAir_Distractor
 @dataclass
 class LocalArgs:
     # Program arguments (dataset directories and wandb only)
-    prog: ProgArgs = ProgArgs(wandb_proj="Dino-v2-Descs", 
-        wandb_group="VLAD-Descs")
+    prog: ProgArgs = ProgArgs(wandb_proj="Dino-v2-Descs",
+                              wandb_group="VLAD-Descs")
     # BaseDataset arguments
     bd_args: BaseDatasetArgs = base_dataset_args
     # Experiment identifier (None = don't use) [won't be used for caching]
@@ -146,8 +145,8 @@ class LocalArgs:
     data_split: Literal["train", "test", "val"] = "test"
     # Dino parameters
     # Model type
-    model_type: Literal["dinov2_vits14", "dinov2_vitb14", 
-            "dinov2_vitl14", "dinov2_vitg14"] = "dinov2_vits14"
+    model_type: Literal["dinov2_vits14", "dinov2_vitb14", "dinov2_vitl14",
+                        "dinov2_vitg14"] = "dinov2_vits14"
     """
         Model for Dino-v2 to use as the base model.
     """
@@ -177,20 +176,21 @@ class LocalArgs:
     # Softmax temperature for VLAD (soft assignment only)
     vlad_soft_temp: float = 1.0
     # Databases to sample
-    db_samples: dict = field(default_factory=lambda: {  # Database name: sub-sampling frequency
-        "Oxford": 0,
-        "gardens": 0,
-        "17places": 0,
-        "baidu_datasets": 0,
-        "st_lucia": 0,
-        "pitts30k": 0,
-        "Tartan_GNSS_test_rotated": 0,
-        "Tartan_GNSS_test_notrotated": 0,
-        "hawkins": 0,
-        "laurel_caverns": 0,
-        "eiffel": 0,
-        "VPAir": 0
-    })
+    db_samples: dict = field(
+        default_factory=lambda: {  # Database name: sub-sampling frequency
+            "Oxford": 0,
+            "gardens": 0,
+            "17places": 0,
+            "baidu_datasets": 0,
+            "st_lucia": 0,
+            "pitts30k": 0,
+            "Tartan_GNSS_test_rotated": 0,
+            "Tartan_GNSS_test_notrotated": 0,
+            "hawkins": 0,
+            "laurel_caverns": 0,
+            "eiffel": 0,
+            "VPAir": 0
+        })
     """
         Configure the sampling of database images for different 
         datasets. The key is the dataset name and the value is the
@@ -217,10 +217,14 @@ class GlobalVLADVocabularyDataset:
         A global wrapper class to create a concatenated list of all
         passed database images. Also has options for sub-sampling.
     """
-    def __init__(self, ds_names: List[str], ds_dir:str, ds_split:str,
-            bd_args: BaseDatasetArgs=base_dataset_args,
-            ss_list: Union[int, List[int]]=1, 
-            size: Tuple[int, int]=(320, 320)):
+
+    def __init__(self,
+                 ds_names: List[str],
+                 ds_dir: str,
+                 ds_split: str,
+                 bd_args: BaseDatasetArgs = base_dataset_args,
+                 ss_list: Union[int, List[int]] = 1,
+                 size: Tuple[int, int] = (320, 320)):
         """
             Parameters:
             - ds_names:     A list of dataset names (IDs) to use
@@ -241,7 +245,7 @@ class GlobalVLADVocabularyDataset:
         self.base_transform = tvf.Compose([
             tvf.ToTensor(),
             tvf.Normalize(mean=[0.485, 0.456, 0.406],
-                            std=[0.229, 0.224, 0.225]),
+                          std=[0.229, 0.224, 0.225]),
             tvf.Resize(size)
         ])
         # Load all dataset images
@@ -252,31 +256,29 @@ class GlobalVLADVocabularyDataset:
         self.db_stat = {}
         for i, ds_name in enumerate(ds_names):
             print(f"Dataset: {ds_name} ->", end=" ")
-            if ds_name=="baidu_datasets":
-                vpr_ds = Baidu_Dataset(bd_args, ds_dir, ds_name, 
-                        data_split)
-            elif ds_name=="Oxford":
+            if ds_name == "baidu_datasets":
+                vpr_ds = Baidu_Dataset(bd_args, ds_dir, ds_name, data_split)
+            elif ds_name == "Oxford":
                 vpr_ds = Oxford(ds_dir)
-            elif ds_name=="Oxford_25m": # This is actually useless!
+            elif ds_name == "Oxford_25m":  # This is actually useless!
                 vpr_ds = Oxford(ds_dir, override_dist=25)
-            elif ds_name=="gardens":
+            elif ds_name == "gardens":
                 vpr_ds = Gardens(bd_args, ds_dir, ds_name, data_split)
             elif ds_name.startswith("Tartan_GNSS"):
                 vpr_ds = Aerial(bd_args, ds_dir, ds_name, data_split)
-            elif ds_name.startswith("hawkins"): # Use long_corridor
-                vpr_ds = Hawkins(bd_args, ds_dir,
-                        "hawkins_long_corridor", data_split)
-            elif ds_name=="VPAir":
+            elif ds_name.startswith("hawkins"):  # Use long_corridor
+                vpr_ds = Hawkins(bd_args, ds_dir, "hawkins_long_corridor",
+                                 data_split)
+            elif ds_name == "VPAir":
                 vpr_ds = VPAir(bd_args, ds_dir, ds_name, data_split)
-                vpr_distractor_ds = VPAir_Distractor(bd_args,
-                        ds_dir, ds_name, data_split)
-            elif ds_name=="laurel_caverns":
+                vpr_distractor_ds = VPAir_Distractor(bd_args, ds_dir, ds_name,
+                                                     data_split)
+            elif ds_name == "laurel_caverns":
                 vpr_ds = Laurel(bd_args, ds_dir, ds_name, data_split)
-            elif ds_name=="eiffel":
+            elif ds_name == "eiffel":
                 vpr_ds = Eiffel(bd_args, ds_dir, ds_name, data_split)
             else:
-                vpr_ds = BaseDataset(bd_args, ds_dir, ds_name, 
-                        data_split)
+                vpr_ds = BaseDataset(bd_args, ds_dir, ds_name, data_split)
             imgs_path = vpr_ds.get_image_paths()
             num_db = vpr_ds.database_num
             num_ss = self.ss_list[i]
@@ -288,13 +290,13 @@ class GlobalVLADVocabularyDataset:
         self.database_num = len(self.db_img_paths)
         print(f"All database images: {self.database_num}")
         self.images_paths = self.db_img_paths
-    
+
     def __len__(self):
         return len(self.images_paths)
-    
+
     def __repr__(self) -> str:
         return f"Composition: {self.db_stat}"
-    
+
     def __getitem__(self, idx):
         img = Image.open(self.images_paths[idx])
         img = self.base_transform(img)
@@ -304,9 +306,11 @@ class GlobalVLADVocabularyDataset:
 # %%
 # %%
 @torch.no_grad()
-def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset, 
-        glob_ds: GlobalVLADVocabularyDataset, verbose: bool=True,
-        vpr_distractor_ds: BaseDataset=None):
+def build_vlads_fm_global(largs: LocalArgs,
+                          vpr_ds: BaseDataset,
+                          glob_ds: GlobalVLADVocabularyDataset,
+                          verbose: bool = True,
+                          vpr_distractor_ds: BaseDataset = None):
     """
         Build VLAD vectors for database and query images using the
         cluster centers from the global vocabulary (collection) data.
@@ -330,18 +334,23 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
             print(f"Directory created: {cache_dir}")
         else:
             print(f"Directory already exists: {cache_dir}")
-    
-    vlad = VLAD(largs.num_clusters, None, 
-            vlad_mode=largs.vlad_assignment, 
-            soft_temp=largs.vlad_soft_temp, cache_dir=cache_dir)
+
+    vlad = VLAD(largs.num_clusters,
+                None,
+                vlad_mode=largs.vlad_assignment,
+                soft_temp=largs.vlad_soft_temp,
+                cache_dir=cache_dir)
     # Load Dino feature extractor model
-    dino = DinoV2ExtractFeatures(largs.model_type, largs.desc_layer,
-                largs.desc_facet, device=device)
+    dino = DinoV2ExtractFeatures(largs.model_type,
+                                 largs.desc_layer,
+                                 largs.desc_facet,
+                                 device=device)
     if verbose:
         print("Dino model loaded")
-    
-    def extract_patch_descriptors(indices, 
-            use_set: Literal["vpr", "distractor", "global"]="vpr"):
+
+    def extract_patch_descriptors(indices,
+                                  use_set: Literal["vpr", "distractor",
+                                                   "global"] = "vpr"):
         patch_descs = []
         for i in tqdm(indices, disable=not verbose):
             if use_set == "vpr":
@@ -357,9 +366,9 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
             img_in = tvf.CenterCrop((h_new, w_new))(img)[None, ...]
             ret = dino(img_in.to(device))
             patch_descs.append(ret.cpu())
-        patch_descs = torch.cat(patch_descs, dim=0) # [N, n_p, d_dim]
+        patch_descs = torch.cat(patch_descs, dim=0)  # [N, n_p, d_dim]
         return patch_descs
-    
+
     # Check for cluster centers
     if vlad.can_use_cache_vlad():
         if verbose:
@@ -383,7 +392,7 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
     if verbose:
         print(f"VLAD cluster centers shape: "\
                 f"{vlad.c_centers.shape}, ({vlad.c_centers.dtype})")
-    
+
     # Database images
     c_dbq = largs.vlad_cache_db_qu
     if verbose:
@@ -394,20 +403,19 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
     if c_dbq and vlad.can_use_cache_ids(db_img_names):
         if verbose:
             print("Using cached VLADs for database images")
-        db_vlads = vlad.generate_multi([None] * len(db_img_names), 
-                db_img_names)
+        db_vlads = vlad.generate_multi([None] * len(db_img_names),
+                                       db_img_names)
     else:
         if verbose:
             print("Valid cache not found, doing forward pass")
         full_db = extract_patch_descriptors(db_indices, "vpr")
         if not c_dbq:
             db_img_names = [None] * len(db_img_names)
-        db_vlads: torch.Tensor = vlad.generate_multi(full_db, 
-                db_img_names)
+        db_vlads: torch.Tensor = vlad.generate_multi(full_db, db_img_names)
         del full_db
     if verbose:
         print(f"Database VLADs shape: {db_vlads.shape}")
-    
+
     # Get VLADs of the queries
     if verbose:
         print("Building VLADs for query images...")
@@ -417,50 +425,48 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
     if c_dbq and vlad.can_use_cache_ids(qu_img_names):
         if verbose:
             print("Using cached VLADs for query images")
-        qu_vlads = vlad.generate_multi([None] * len(qu_img_names), 
-                qu_img_names)
+        qu_vlads = vlad.generate_multi([None] * len(qu_img_names),
+                                       qu_img_names)
     else:
         if verbose:
             print("Valid cache not found, doing forward pass")
         full_qu = extract_patch_descriptors(q_indices, "vpr")
         if not c_dbq:
             qu_img_names = [None] * len(qu_img_names)
-        qu_vlads = vlad.generate_multi(full_qu,
-                qu_img_names)
+        qu_vlads = vlad.generate_multi(full_qu, qu_img_names)
         del full_qu
     if verbose:
         print(f"Query VLADs shape: {qu_vlads.shape}")
-    
+
     # Append to db_vlads for vpair distractors
     if vpr_distractor_ds is not None:
         num_dis_db = vpr_distractor_ds.database_num
         if verbose:
             print("Building VLADs for vpair distractors...")
         try:
-            db_dis_indices = np.arange(0, num_dis_db, 
-                    largs.sub_sample_db)
+            db_dis_indices = np.arange(0, num_dis_db, largs.sub_sample_db)
             db_dis_img_names = vpr_distractor_ds.get_image_relpaths(
-                    db_dis_indices)
+                db_dis_indices)
             if c_dbq and vlad.can_use_cache_ids(db_dis_img_names):
                 if verbose:
                     print("Valid cache found, using it")
-                db_dis_vlads = vlad.generate_multi([None] * len(
-                        db_dis_img_names), db_dis_img_names)
+                db_dis_vlads = vlad.generate_multi(
+                    [None] * len(db_dis_img_names), db_dis_img_names)
             else:
                 if verbose:
                     print("Valid cache not found, doing forward pass")
                 full_dis_db = extract_patch_descriptors(
-                        db_dis_indices, "distractor")
+                    db_dis_indices, "distractor")
                 if verbose:
                     print(f"Dist. VLAD shape: {full_dis_db.shape}")
                 if not c_dbq:
                     db_dis_img_names = [None] * len(db_dis_img_names)
                 db_dis_vlads: torch.Tensor = vlad.generate_multi(
-                        full_dis_db, db_dis_img_names)
+                    full_dis_db, db_dis_img_names)
                 del full_dis_db
             if verbose:
                 print(f"Dist. VLAD shape: {db_dis_vlads.shape}")
-            c_db_vlads = torch.concatenate((db_vlads,db_dis_vlads),0)
+            c_db_vlads = torch.concatenate((db_vlads, db_dis_vlads), 0)
             db_vlads = c_db_vlads
             if verbose:
                 print(f"Combined db VLAD shape: {db_vlads.shape}")
@@ -468,7 +474,7 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
             print(f"Runtime error: {exc}")
             traceback.print_exc()
             print("Ignoring vpair distractors")
-    
+
     return db_vlads, qu_vlads
 
 
@@ -477,15 +483,16 @@ def build_vlads_fm_global(largs: LocalArgs, vpr_ds: BaseDataset,
 def main(largs: LocalArgs):
     print(f"Arguments: {largs}")
     seed_everything(42)
-    
+
     if largs.prog.use_wandb:
         # Launch WandB
-        wandb_run = wandb.init(project=largs.prog.wandb_proj, 
-                entity=largs.prog.wandb_entity, config=largs,
-                group=largs.prog.wandb_group, 
-                name=largs.prog.wandb_run_name)
+        wandb_run = wandb.init(project=largs.prog.wandb_proj,
+                               entity=largs.prog.wandb_entity,
+                               config=largs,
+                               group=largs.prog.wandb_group,
+                               name=largs.prog.wandb_run_name)
         print(f"Initialized WandB run: {wandb_run.name}")
-    
+
     print("--------- Loading datasets ---------")
     ds_dir = largs.prog.data_vg_dir
     ds_split = largs.data_split
@@ -493,50 +500,50 @@ def main(largs: LocalArgs):
     ds_use = [ds for ds in largs.db_samples \
             if largs.db_samples[ds] != 0]
     assert len(ds_use) > 0, "No datasets selected"
-    glob_ds = GlobalVLADVocabularyDataset(ds_use, ds_dir, ds_split, 
-            largs.bd_args, [largs.db_samples[k] for k in ds_use])
+    glob_ds = GlobalVLADVocabularyDataset(
+        ds_use, ds_dir, ds_split, largs.bd_args,
+        [largs.db_samples[k] for k in ds_use])
     ds_name = largs.prog.vg_dataset_name
     print(f"Dataset name (to use): {ds_name}")
     # Load dataset
-    if ds_name=="baidu_datasets":
-        vpr_ds = Baidu_Dataset(largs.bd_args, ds_dir, ds_name, 
-                            largs.data_split)
-    elif ds_name=="Oxford":
+    if ds_name == "baidu_datasets":
+        vpr_ds = Baidu_Dataset(largs.bd_args, ds_dir, ds_name,
+                               largs.data_split)
+    elif ds_name == "Oxford":
         vpr_ds = Oxford(ds_dir)
-    elif ds_name=="Oxford_25m":
+    elif ds_name == "Oxford_25m":
         vpr_ds = Oxford(ds_dir, override_dist=25)
-    elif ds_name=="gardens":
-        vpr_ds = Gardens(largs.bd_args,ds_dir,ds_name,largs.data_split)
+    elif ds_name == "gardens":
+        vpr_ds = Gardens(largs.bd_args, ds_dir, ds_name, largs.data_split)
     elif ds_name.startswith("Tartan_GNSS"):
-        vpr_ds = Aerial(largs.bd_args,ds_dir,ds_name,largs.data_split)
-    elif ds_name.startswith("hawkins"): # Use only long_corridor
-        vpr_ds = Hawkins(largs.bd_args,ds_dir,"hawkins_long_corridor",largs.data_split)
-    elif ds_name=="VPAir":
-        vpr_ds = VPAir(largs.bd_args,ds_dir,ds_name,largs.data_split)
-        vpr_distractor_ds = VPAir_Distractor(largs.bd_args,ds_dir,ds_name,largs.data_split)
-    elif ds_name=="laurel_caverns":
-        vpr_ds = Laurel(largs.bd_args,ds_dir,ds_name,largs.data_split)
-    elif ds_name=="eiffel":
-        vpr_ds = Eiffel(largs.bd_args,ds_dir,ds_name,largs.data_split)
+        vpr_ds = Aerial(largs.bd_args, ds_dir, ds_name, largs.data_split)
+    elif ds_name.startswith("hawkins"):  # Use only long_corridor
+        vpr_ds = Hawkins(largs.bd_args, ds_dir, "hawkins_long_corridor",
+                         largs.data_split)
+    elif ds_name == "VPAir":
+        vpr_ds = VPAir(largs.bd_args, ds_dir, ds_name, largs.data_split)
+        vpr_distractor_ds = VPAir_Distractor(largs.bd_args, ds_dir, ds_name,
+                                             largs.data_split)
+    elif ds_name == "laurel_caverns":
+        vpr_ds = Laurel(largs.bd_args, ds_dir, ds_name, largs.data_split)
+    elif ds_name == "eiffel":
+        vpr_ds = Eiffel(largs.bd_args, ds_dir, ds_name, largs.data_split)
     else:
-        vpr_ds = BaseDataset(largs.bd_args, ds_dir, ds_name, 
-                        largs.data_split)
-    
-    if ds_name=="VPAir":
-        db_vlads, qu_vlads = build_vlads_fm_global(largs, vpr_ds,
-                glob_ds, vpr_distractor_ds=vpr_distractor_ds)
+        vpr_ds = BaseDataset(largs.bd_args, ds_dir, ds_name, largs.data_split)
+
+    if ds_name == "VPAir":
+        db_vlads, qu_vlads = build_vlads_fm_global(
+            largs, vpr_ds, glob_ds, vpr_distractor_ds=vpr_distractor_ds)
     else:
-        db_vlads, qu_vlads = build_vlads_fm_global(largs, vpr_ds, 
-                glob_ds)
+        db_vlads, qu_vlads = build_vlads_fm_global(largs, vpr_ds, glob_ds)
     print("--------- Generated VLADs ---------")
-    
+
     # If saving (for internal debugging only)
     if largs.save_vlad_descs is not None:
         print("------ Saving VLAD descriptors ------")
         print(f"DB VLAD shape: {db_vlads.shape}")
         print(f"QU VLAD shape: {qu_vlads.shape}")
-        save_dir = os.path.realpath(os.path.expanduser(
-                largs.save_vlad_descs))
+        save_dir = os.path.realpath(os.path.expanduser(largs.save_vlad_descs))
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
             print(f"Created directory: {save_dir}")
@@ -546,14 +553,17 @@ def main(largs: LocalArgs):
         torch.save(db_vlads.cpu(), f"{save_dir}/db-{ds_name}.pt")
         torch.save(qu_vlads.cpu(), f"{save_dir}/qu-{ds_name}.pt")
         print(f"Saved files [db,qu]-{ds_name}.pt in {save_dir}")
-    
+
     print("----- Calculating recalls through top-k matching -----")
-    dists, indices, recalls = get_top_k_recall(largs.top_k_vals, 
-        db_vlads, qu_vlads, vpr_ds.soft_positives_per_query, 
-        sub_sample_db=largs.sub_sample_db, 
+    dists, indices, recalls = get_top_k_recall(
+        largs.top_k_vals,
+        db_vlads,
+        qu_vlads,
+        vpr_ds.soft_positives_per_query,
+        sub_sample_db=largs.sub_sample_db,
         sub_sample_qu=largs.sub_sample_qu)
     print("------------ Recalls calculated ------------")
-    
+
     print("--------------------- Results ---------------------")
     ts = time.strftime(f"%Y_%m_%d_%H_%M_%S")
     caching_directory = largs.prog.cache_dir
@@ -561,7 +571,7 @@ def main(largs: LocalArgs):
         "Model-Type": str(largs.model_type),
         "Desc-Layer": str(largs.desc_layer),
         "Desc-Facet": str(largs.desc_facet),
-        "Desc-Dim": str(db_vlads.shape[1]//largs.num_clusters),
+        "Desc-Dim": str(db_vlads.shape[1] // largs.num_clusters),
         "VLAD-Dim": str(db_vlads.shape[1]),
         "Num-Clusters": str(largs.num_clusters),
         "Experiment-ID": str(largs.exp_id),
@@ -591,13 +601,13 @@ def main(largs: LocalArgs):
             plt_title = f"{plt_title} - {wandb_run.name}"
         plt.title(plt_title)
         plt.show()
-    
+
     # Log to WandB
     if largs.prog.use_wandb:
         wandb.log(results)
         for tk in recalls:
             wandb.log({"Recall-All": recalls[tk]}, step=int(tk))
-    
+
     # Add retrievals
     results["Qual-Dists"] = dists
     results["Qual-Indices"] = indices
@@ -615,7 +625,7 @@ def main(largs: LocalArgs):
         joblib.dump(results, save_res_file)
     else:
         print("Not saving results")
-    
+
     if largs.prog.use_wandb:
         wandb.finish()
     print("--------------------- END ---------------------")
@@ -633,6 +643,5 @@ if __name__ == "__main__" and ("ipykernel" not in sys.argv[0]):
     finally:
         print(f"Program ended in {time.time()-_start:.3f} seconds")
         exit(0)
-
 
 # %%
