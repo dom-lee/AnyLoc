@@ -7,6 +7,7 @@
 import os
 import sys
 from pathlib import Path
+
 dir_name = None
 try:
     dir_name = os.path.dirname(os.path.realpath(__file__))
@@ -31,6 +32,7 @@ from typing import Literal, List, Union
 import torch
 
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+
 
 # %%
 def try_tyro(x, allow_safe_quit=False):
@@ -62,7 +64,7 @@ class ProgArgs:
         Core program arguments
     """
     # A directory for storing cache
-    cache_dir: Path = "/ocean/projects/cis220039p/jkarhade/data/vlvpr_cache"#f"/scratch/{user_name}/vl-vpr/cache"
+    cache_dir: Path = "/ocean/projects/cis220039p/jkarhade/data/vlvpr_cache"  #f"/scratch/{user_name}/vl-vpr/cache"
     """
         Directory for cache storage. Values:
         - Avneesh: f"/scratch/{user_name}/vl-vpr/cache"
@@ -70,12 +72,20 @@ class ProgArgs:
     """
     # The directory where 'datasets-vg' are downloaded
     data_vg_dir: Path = "/home/dongmyeong/Projects/AMRL/CAO-SLAM/datasets"
+    """
         Directory where the datasets are stored. Values:
         - Avneesh: f"{lib_path}/datasets_vg/datasets"
         - Jay: '/home/jay/Downloads/vl_vpr_datasets'
     """
     # Default dataset name for VPR
-    vg_dataset_name: Literal["st_lucia", "pitts30k", "17places", "nordland", "tokyo247", "baidu_datasets", "Oxford", "Oxford_25m", "gardens", "hawkins","hawkins_long_corridor", "global", "VPAir", "Tartan_GNSS_rotated", "Tartan_GNSS_notrotated", "Tartan_GNSS_test_notrotated", "Tartan_GNSS_test_rotated",  "laurel_caverns","eiffel"] = "hawkins_long_corridor"
+    vg_dataset_name: Literal["st_lucia", "pitts30k", "17places", "nordland",
+                             "tokyo247", "baidu_datasets", "Oxford",
+                             "Oxford_25m", "gardens", "hawkins",
+                             "hawkins_long_corridor", "global", "VPAir",
+                             "Tartan_GNSS_rotated", "Tartan_GNSS_notrotated",
+                             "Tartan_GNSS_test_notrotated",
+                             "Tartan_GNSS_test_rotated", "laurel_caverns",
+                             "eiffel"] = "hawkins_long_corridor"
     # Use wandb (False = No WandB)
     use_wandb: bool = False
     # WandB project name
@@ -88,6 +98,7 @@ class ProgArgs:
     wandb_run_name: str = "Oxford/CLIP_TopK"
     # Save qualitative results for WandB
     wandb_save_qual: bool = False
+
 
 prog_args = ProgArgs()
 """
@@ -129,6 +140,7 @@ dataset_name = prog_args.vg_dataset_name
     > Note: Default placeholder, not effected by tyro.
 """
 
+
 # %% --------------------- Argument classes ---------------------
 # For parsing datasets
 @dataclass(frozen=True)
@@ -137,11 +149,11 @@ class BaseDatasetArgs:
         Dataset arguments for BaseDataset in `datasets_ws.py`
     """
     # Resize shape: [H, W]
-    resize: List[int] = field(default_factory=lambda:[480, 640])
+    resize: List[int] = field(default_factory=lambda: [480, 640])
     # Pre/post-processing methods and prediction refinement
-    test_method: Literal["hard_resize", "single_query", \
-            "central_crop", "five_crops", "nearest_crop", \
-            "maj_voting"] = "hard_resize"
+    test_method: Literal["hard_resize", "single_query", "central_crop",
+                         "five_crops", "nearest_crop",
+                         "maj_voting"] = "hard_resize"
     """
         Pre/post processing method must be one of the following (str)
         - hard_resize:  Apply straightforward resize to above shape.
@@ -159,19 +171,8 @@ class BaseDatasetArgs:
     # Threshold value for positive distance (classification)
     val_positive_dist_threshold: int = 25
 
+
 base_dataset_args = BaseDatasetArgs()
 """
     > Note: Default placeholder, not effected by tyro.
 """
-
-
-# %%
-# Experimental section
-
-# %%
-
-
-# %%
-# Experimental section
-
-# %%

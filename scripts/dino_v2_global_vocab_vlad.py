@@ -99,10 +99,8 @@ import tyro
 import matplotlib.pyplot as plt
 from utilities import VLAD, get_top_k_recall, seed_everything
 from utilities import DinoV2ExtractFeatures
-from configs import ProgArgs, prog_args, BaseDatasetArgs, \
-        base_dataset_args, device
-from custom_datasets.global_dataloader import Global_Dataloader \
-        as GlobalDataloader
+from configs import ProgArgs, prog_args, BaseDatasetArgs, base_dataset_args, device
+from custom_datasets.global_dataloader import Global_Dataloader as GlobalDataloader
 from dvgl_benchmark.datasets_ws import BaseDataset
 from custom_datasets.baidu_dataloader import Baidu_Dataset
 from custom_datasets.oxford_dataloader import Oxford
@@ -631,7 +629,6 @@ def main(largs: LocalArgs):
     print("--------------------- END ---------------------")
 
 
-# %%
 if __name__ == "__main__" and ("ipykernel" not in sys.argv[0]):
     largs = tyro.cli(LocalArgs, description=__doc__)
     _start = time.time()
@@ -643,5 +640,3 @@ if __name__ == "__main__" and ("ipykernel" not in sys.argv[0]):
     finally:
         print(f"Program ended in {time.time()-_start:.3f} seconds")
         exit(0)
-
-# %%

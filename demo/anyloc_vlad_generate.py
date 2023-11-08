@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from onedrivedownloader import download
 from utilities import od_down_links
 from typing import Literal, Union
+
 # DINOv2 imports
 from utilities import DinoV2ExtractFeatures
 from utilities import VLAD
@@ -51,7 +52,9 @@ class LocalArgs:
     imgs_ext: str = "jpg"
     # Output directory where global descriptors will be stored
     # out_dir: str = "./data/CityCenter/GD_Images"
-    out_dir: str = "/home/dongmyeong/Projects/AMRL/CAO-SLAM/datasets/CODa/global_descriptors"
+    out_dir: str = (
+        "/home/dongmyeong/Projects/AMRL/CAO-SLAM/datasets/CODa/global_descriptors"
+    )
     # Maximum edge length (expected) across all images (GPU OOM)
     max_img_size: int = 1024
     # Use the OneDrive mirror for example
@@ -80,10 +83,12 @@ def download_test_data(use_odrive: bool):
     if use_odrive:
         print("Downloading images from OneDrive ...")
         imgs_link = od_down_links["test_imgs_od"]
-        download(imgs_link,
-                 "./data/CityCenter/Images.zip",
-                 unzip=True,
-                 unzip_path="./data/CityCenter")
+        download(
+            imgs_link,
+            "./data/CityCenter/Images.zip",
+            unzip=True,
+            unzip_path="./data/CityCenter",
+        )
         print("Download and extraction of images from OneDrive completed")
     else:
         print("Downloading from original source")
@@ -130,27 +135,27 @@ def main(largs: LocalArgs):
         print("Save directory already exists, overwriting possible!")
 
     # Load the DINO extractor model
-    extractor = DinoV2ExtractFeatures("dinov2_vitg14",
-                                      desc_layer,
-                                      desc_facet,
-                                      device=device)
-    base_tf = tvf.Compose([  # Base image transformations
-        tvf.ToTensor(),
-        tvf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    extractor = DinoV2ExtractFeatures(
+        "dinov2_vitg14", desc_layer, desc_facet, device=device
+    )
+    base_tf = tvf.Compose(
+        [  # Base image transformations
+            tvf.ToTensor(),
+            tvf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
 
     # VLAD object (load cache)
     cache_dir = _ex("./cache")
     ext_specifier = f"dinov2_vitg14/l{desc_layer}_{desc_facet}_c{num_c}"
-    c_centers_file = os.path.join(cache_dir, "vocabulary", ext_specifier,
-                                  domain, "c_centers.pt")
+    c_centers_file = os.path.join(
+        cache_dir, "vocabulary", ext_specifier, domain, "c_centers.pt"
+    )
     assert os.path.isfile(c_centers_file), "Vocabulary not cached!"
     c_centers = torch.load(c_centers_file)
     assert c_centers.shape[0] == num_c, "Wrong number of clusters!"
     # Main VLAD object
-    vlad = VLAD(num_c,
-                desc_dim=None,
-                cache_dir=os.path.dirname(c_centers_file))
+    vlad = VLAD(num_c, desc_dim=None, cache_dir=os.path.dirname(c_centers_file))
     vlad.fit(None)  # Load the vocabulary
 
     # Global descriptor generation
@@ -159,11 +164,11 @@ def main(largs: LocalArgs):
     img_fnames = glob.glob(f"{imgs_dir}/*.jpg")
     img_fnames = natsort.natsorted(img_fnames)
     if largs.first_n is not None:
-        img_fnames = img_fnames[:largs.first_n]
+        img_fnames = img_fnames[: largs.first_n]
     for img_fname in tqdm(img_fnames):
         # DINO features
         with torch.no_grad():
-            pil_img = Image.open(img_fname).convert('RGB')
+            pil_img = Image.open(img_fname).convert("RGB")
             img_pt = base_tf(pil_img).to(device)
             if max(img_pt.shape[-2:]) > max_img_size:
                 c, h, w = img_pt.shape
@@ -175,8 +180,9 @@ def main(largs: LocalArgs):
                     h = int(h * max_img_size / w)
                     w = max_img_size
                 print(f"To {(h, w) =}")
-                img_pt = T.resize(img_pt, (h, w),
-                                  interpolation=T.InterpolationMode.BICUBIC)
+                img_pt = T.resize(
+                    img_pt, (h, w), interpolation=T.InterpolationMode.BICUBIC
+                )
                 print(f"Resized {img_fname} to {img_pt.shape = }")
             # Make image patchable (14, 14 patches)
             c, h, w = img_pt.shape
